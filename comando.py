@@ -1,7 +1,7 @@
 from PyQt5 import uic, QtWidgets
 import time
 import mysql.connector
-
+from PyQt5.QtWidgets import QMessageBox
 
 banco = mysql.connector.connect(
     host = "localhost",
@@ -11,9 +11,8 @@ banco = mysql.connector.connect(
 )
 
 def layout_palavra(tentativas): #puxar do banco de dados
-
+    x = []
     cursor = banco.cursor()
-
 
     cursor.execute("select palavrasecreta from criapalavre where id = (SELECT MAX(id) as maxId FROM criapalavre)")
     palavra_secreta = cursor.fetchall()
@@ -36,13 +35,20 @@ def layout_palavra(tentativas): #puxar do banco de dados
         cursor.execute(sql)
         banco.commit()
         time.sleep(5)
+        chuta.close()
     print()
     print(acertos)
     for acerto, letra in zip(acertos, palavra_secreta):
         if acerto: # quer dizer que se o acerto for igual a True
             print(letra.upper(), end=' ')
+            x.append(letra)
         else: #se o acerto for falso
             print('_', end=' ')
+            x.append("_")
+
+    y = " ".join(x)
+
+    chuta.label_6.setText(y.upper())
 
     print('\n\n')
 
@@ -82,89 +88,78 @@ def update_acertos(lista_chute, acertos, tentativas):
         banco.commit()
         time.sleep(5)
     print(tentativas)
-
-    #
-    # if tentativas == 5:
-    #     layout_palavra(acertos, palavra_secreta,tentativas)
-    #     print('ACABARAM AS TENTATIVAS!!!')
-    #     print('\n\n')
-    #     time.sleep(5)
-    #
-    # if all(acertos):
-    #     layout_palavra(acertos, palavra_secreta, tentativas)
-    #     print('\n')
-    #     avatar_vencedor()
-    #     print("PARABÉNS, VOCÊ GANHOU!!!")
-    #     print('\n\n')
-    #     time.sleep(5)
     banco.commit()
 
 
 def setup():
 
     global acertos
-    cria_palavra_dica()
+    palavra1 = forca.lineEdit.text()
+    palavra2 = forca.lineEdit_2.text()
 
-    cursor = banco.cursor()
+    if palavra1 == palavra2:
+        cria_palavra_dica()
+        cursor = banco.cursor()
 
-    cursor.execute("select palavrasecreta from criapalavre where id= (SELECT MAX(id) as maxId FROM criapalavre)")
-    n_letras = cursor.fetchall()
-    n_letras = (len(n_letras[0][0]))
+        cursor.execute("select palavrasecreta from criapalavre where id= (SELECT MAX(id) as maxId FROM criapalavre)")
+        n_letras = cursor.fetchall()
+        n_letras = (len(n_letras[0][0]))
 
-    # inserir numero de palavras no banco de dados.
-    acertos = ([False] * n_letras)
-    print(acertos)
-    teste = 2
-    cursor.execute("insert into setup(numerodeletras, acertos) values('%s','%s')", (n_letras, teste))
-    cursor.execute("insert into chute(letrascitadas, tentativa) values(' ','0')")
-    chuta.show()
-    chuta.label_6.setText(forca.lineEdit.text())
-    chuta.label_7.setText(forca.lineEdit_3.text())
-    forca.close()
-
-
-# def testando():
-#     forca.label_6.setText("R")
+        # inserir numero de palavras no banco de dados.
+        acertos = ([False] * n_letras)
+        print(acertos)
+        teste = 2
+        cursor.execute("insert into setup(numerodeletras, acertos) values('%s','%s')", (n_letras, teste))
+        cursor.execute("insert into chute(letrascitadas, tentativa) values(' ','0')")
+        chuta.show()
+        chuta.label_7.setText(forca.lineEdit_3.text().upper())
+    else:
+        QMessageBox.about(forca, "aviso", "REPETIÇÃO DA PALAVRA NÃO CONFERE!")
 
 
 
 def chutaai():
-    cursor = banco.cursor()
-    sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-    cursor.execute(sql)
-    tentativas = cursor.fetchall()
-    tentativas = (tentativas[0][0])
+    if ((chuta.lineEdit_4.text()) not in lista_chute):
 
-    if tentativas < 5:
-        lista_chute02 = ' - '.join(lista_chute)
-        print('LETRAS CITADAS: {}'.format(lista_chute02).upper())
-        print('\n')
-        cursor.execute("select dica from criapalavre where id =(SELECT MAX(id) as maxId FROM criapalavre)")
-        dica = cursor.fetchall()
-        dica = (dica[0][0])
-        print(dica)
-        print('DICA SECRETA: %s' %dica)
-        print('\n')
-        update_acertos(lista_chute, acertos, tentativas)
-        print("passou do update")
+        cursor = banco.cursor()
+        sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
+        cursor.execute(sql)
+        tentativas = cursor.fetchall()
+        tentativas = (tentativas[0][0])
 
-    sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-    cursor.execute(sql)
-    tentativas = cursor.fetchall()
-    tentativas = (tentativas[0][0])
+        if tentativas < 5:
+            lista_chute02 = ' - '.join(lista_chute)
+            print('LETRAS CITADAS: {}'.format(lista_chute02).upper())
+            print('\n')
+            cursor.execute("select dica from criapalavre where id =(SELECT MAX(id) as maxId FROM criapalavre)")
+            dica = cursor.fetchall()
+            dica = (dica[0][0])
+            print(dica)
+            print('DICA SECRETA: %s' %dica)
+            print('\n')
+            update_acertos(lista_chute, acertos, tentativas)
+            print("passou do update")
 
-    layout_palavra(tentativas)
+        sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
+        cursor.execute(sql)
+        tentativas = cursor.fetchall()
+        tentativas = (tentativas[0][0])
 
-    lista_chutelabel = str(lista_chute)
-    chuta.label_10.setText(lista_chutelabel)
+        layout_palavra(tentativas)
 
+        lista_chutelabel = ((" - ".join(lista_chute)).upper())
+        chuta.label_10.setText(lista_chutelabel)
+        chuta.lineEdit_4.setText("")
 
+    else:
+        QMessageBox.about(chuta,"AVISO", "LETRA JÁ CITADA")
 
 def cria_palavra_dica():
     cursor = banco.cursor()
     palavra = forca.lineEdit.text()
     dica = forca.lineEdit_3.text()
     cursor.execute("insert into criapalavre(palavrasecreta, dica) values ('" + palavra + "','" + dica + "')")
+
 
 def enforcado():
     box = ['\u2572']
