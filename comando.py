@@ -9,6 +9,7 @@ banco = mysql.connector.connect(
     passwd = "123456",
     database = "bdforca"
 )
+alfabeto=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',' ','ç']
 
 def layout_palavra(tentativas): #puxar do banco de dados
     x = []
@@ -35,7 +36,7 @@ def layout_palavra(tentativas): #puxar do banco de dados
         cursor.execute(sql)
         banco.commit()
         time.sleep(5)
-        chuta.close()
+
     print()
     print(acertos)
     for acerto, letra in zip(acertos, palavra_secreta):
@@ -76,7 +77,6 @@ def update_acertos(lista_chute, acertos, tentativas):
     if tentativas == 5:
         layout_palavra(tentativas)
 
-
     if all(acertos):
         layout_palavra(tentativas)
         print('\n')
@@ -108,8 +108,6 @@ def setup():
         # inserir numero de palavras no banco de dados.
         acertos = ([False] * n_letras)
         print(acertos)
-        teste = 2
-        cursor.execute("insert into setup(numerodeletras, acertos) values('%s','%s')", (n_letras, teste))
         cursor.execute("insert into chute(letrascitadas, tentativa) values(' ','0')")
         chuta.show()
         chuta.label_7.setText(forca.lineEdit_3.text().upper())
@@ -119,40 +117,45 @@ def setup():
 
 
 def chutaai():
-    if ((chuta.lineEdit_4.text()) not in lista_chute):
+    if ((chuta.lineEdit_4.text()) in alfabeto):
+        if ((chuta.lineEdit_4.text()) not in lista_chute):
 
-        cursor = banco.cursor()
-        sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-        cursor.execute(sql)
-        tentativas = cursor.fetchall()
-        tentativas = (tentativas[0][0])
+            cursor = banco.cursor()
+            sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
+            cursor.execute(sql)
+            tentativas = cursor.fetchall()
+            tentativas = (tentativas[0][0])
 
-        if tentativas < 5:
-            lista_chute02 = ' - '.join(lista_chute)
-            print('LETRAS CITADAS: {}'.format(lista_chute02).upper())
-            print('\n')
-            cursor.execute("select dica from criapalavre where id =(SELECT MAX(id) as maxId FROM criapalavre)")
-            dica = cursor.fetchall()
-            dica = (dica[0][0])
-            print(dica)
-            print('DICA SECRETA: %s' %dica)
-            print('\n')
-            update_acertos(lista_chute, acertos, tentativas)
-            print("passou do update")
+            if tentativas < 5:
+                lista_chute02 = ' - '.join(lista_chute)
+                print('LETRAS CITADAS: {}'.format(lista_chute02).upper())
+                print('\n')
+                cursor.execute("select dica from criapalavre where id =(SELECT MAX(id) FROM criapalavre)")
+                dica = cursor.fetchall()
+                dica = (dica[0][0])
+                print(dica)
+                print('DICA SECRETA: %s' %dica)
+                print('\n')
+                update_acertos(lista_chute, acertos, tentativas)
+                print("passou do update")
 
-        sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-        cursor.execute(sql)
-        tentativas = cursor.fetchall()
-        tentativas = (tentativas[0][0])
+            sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
+            cursor.execute(sql)
+            tentativas = cursor.fetchall()
+            tentativas = (tentativas[0][0])
 
-        layout_palavra(tentativas)
+            layout_palavra(tentativas)
 
-        lista_chutelabel = ((" - ".join(lista_chute)).upper())
-        chuta.label_10.setText(lista_chutelabel)
-        chuta.lineEdit_4.setText("")
+            lista_chutelabel = ((" - ".join(lista_chute)).upper())
+            chuta.label_10.setText(lista_chutelabel)
+            chuta.lineEdit_4.setText("")
 
+
+        else:
+            QMessageBox.about(chuta,"AVISO", "LETRA JÁ CITADA")
     else:
-        QMessageBox.about(chuta,"AVISO", "LETRA JÁ CITADA")
+        QMessageBox.about(chuta, "AVISO", "Caractere inválido!")
+
 
 def cria_palavra_dica():
     cursor = banco.cursor()
