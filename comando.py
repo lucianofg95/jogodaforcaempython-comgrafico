@@ -2,6 +2,32 @@ from PyQt5 import uic, QtWidgets
 import time
 import mysql.connector
 from PyQt5.QtWidgets import QMessageBox
+from peewee import SqliteDatabase, Model, TextField, ForeignKeyField, DateTimeField, IntegerField,fn
+
+db = SqliteDatabase('bdforca.db')
+
+class basemodel(Model):
+    class Meta:
+        database = db
+
+class usuario(basemodel):
+    nome = TextField(unique=True)
+    vitoria = IntegerField()
+    derrota = IntegerField()
+
+class criapalavra(basemodel):
+    jogador = ForeignKeyField(usuario, backref='usuarios')
+    palavrasecreta = TextField()
+    dica = TextField()
+    datacriacao = DateTimeField(default='datetime.now()')
+
+class chutejog(basemodel):
+    jogador02 = ForeignKeyField(usuario, backref='usuarios')
+    letracitada = TextField()
+    tentativa = IntegerField()
+
+db.create_tables([usuario, criapalavra, chutejog] )
+
 
 banco = mysql.connector.connect(
     host = "localhost",
@@ -11,13 +37,52 @@ banco = mysql.connector.connect(
 )
 alfabeto=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',' ','ç']
 
+def login():
+    usuariologin.show()
+    jogadoresativos = []
+
+    for row in (usuario.select()):
+        n_jog = (row.nome)
+        for row in (usuario.select().where(usuario.nome == n_jog)):
+            jogadoresativos.append(row.nome)
+            jogadoresativos.append(row.vitoria)
+            jogadoresativos.append(row.derrota)
+
+    n_usuarios= 0
+    for row in (usuario.select()):
+        n_usuarios += 1
+
+    usuariologin.tableWidget.setRowCount(n_usuarios)
+    usuariologin.tableWidget.setColumnCount(3)
+
+    q = 0
+    for i in range(0, n_usuarios):
+        for j in range(0,3):
+            usuariologin.tableWidget.setItem(i,j,QtWidgets.QTableWidgetItem(str(jogadoresativos[q])))
+            q += 1
+
+def criarlogin():
+    nomeusuario = usuariologin.lineEdit.text()
+    usuario.create(
+        nome= nomeusuario,
+        vitoria= 0,
+        derrota= 0
+    )
+    for row in (usuario.select().where(usuario.nome == nomeusuario)):
+        forca.comboBox.addItem(row.nome)
+        forca.comboBox_2.addItem(row.nome)
+
+    usuariologin.lineEdit.setText("")
+
+
+
+
+
 def layout_palavra(tentativas): #puxar do banco de dados
     x = []
-    cursor = banco.cursor()
 
-    cursor.execute("select palavrasecreta from criapalavre where id = (SELECT MAX(id) as maxId FROM criapalavre)")
-    palavra_secreta = cursor.fetchall()
-    palavra_secreta = (palavra_secreta[0][0])
+    for row in (criapalavra.select(criapalavra.palavrasecreta, fn.max(criapalavra.id))):
+        palavra_secreta = (row.palavrasecreta)
 
     print(tentativas)
     if tentativas == 1: #puxar tentativas da tabela chute
@@ -33,8 +98,7 @@ def layout_palavra(tentativas): #puxar do banco de dados
         print('ACABARAM AS TENTATIVAS!!!')
         print('\n\n')
         sql = "delete from chute"
-        cursor.execute(sql)
-        banco.commit()
+        chutejog.delete()
         time.sleep(5)
 
     print()
@@ -54,61 +118,92 @@ def layout_palavra(tentativas): #puxar do banco de dados
     print('\n\n')
 
 def update_acertos(lista_chute, acertos, tentativas):
-    cursor = banco.cursor()
-    chute = chuta.lineEdit_4.text()
-    lista_chute.append(chute)
+
+    delete = chutejog.delete()
+    chutex = chuta.lineEdit_4.text()
+    lista_chute.append(chutex)
     print(lista_chute)
-    cursor.execute("select palavrasecreta from criapalavre where id =(SELECT MAX(id) as maxId FROM criapalavre)")
-    palavra_secreta = cursor.fetchall()
-    palavra_secreta = (palavra_secreta[0][0])
-    print(palavra_secreta)
+
+    for row in (criapalavra.select(criapalavra.palavrasecreta, fn.MAX(criapalavra.id))):
+        palavra_secreta = (row.palavrasecreta)
 
     for i, letra in enumerate(palavra_secreta):
-        if chute.lower() == letra:
+        if chutex.lower() == letra:
             acertos[i] = True
 
-    if chute not in palavra_secreta:
+    if chutex not in palavra_secreta:
         tentativas = tentativas + 1
 
 
-    sql = "insert chute(letrascitadas, tentativa) values (%s, %s)"
-    cursor.execute(sql, (chute, tentativas))
+    try:
+        chutejogagor = chutejog.create(
+            jogador02=jogadorpartida,
+            letracitada=chutex,
+            tentativa=tentativas
+        )
+        chutejogagor.save()
+    except:
+        print("erro de execução ao inserir chute no banco de dados")
+
 
     if tentativas == 5:
         layout_palavra(tentativas)
+        delete.execute()
+        pontopositivo = usuario.update(derrota=usuario.derrota + 1).where(usuario.id == jogadorpartida)
+        pontonegativo = usuario.update(vitoria=usuario.vitoria + 1).where(usuario.id == criadorpalavra)
+        pontopositivo.execute()
+        pontonegativo.execute()
 
     if all(acertos):
+        delete.execute()
         layout_palavra(tentativas)
         print('\n')
         avatar_vencedor()
         print("PARABÉNS, VOCÊ GANHOU!!!")
         print('\n\n')
-        sql = "delete from chute"
-        cursor.execute(sql)
-        banco.commit()
-        time.sleep(5)
+        try:
+            pontopositivo = usuario.update(vitoria=usuario.vitoria + 1).where(usuario.id == jogadorpartida)
+            pontonegativo = usuario.update(derrota=usuario.derrota + 1).where(usuario.id == criadorpalavra)
+            pontopositivo.execute()
+            pontonegativo.execute()
+
+        except:
+            print("erro de execução")
+        # time.sleep(5)
     print(tentativas)
-    banco.commit()
 
 
 def setup():
 
     global acertos
+
     palavra1 = forca.lineEdit.text()
     palavra2 = forca.lineEdit_2.text()
+    global jogadorpartida
+    for row in (usuario.select(usuario.id).where(usuario.nome == forca.comboBox_2.currentText())):
+        jogadorpartida = (row.id)
 
     if palavra1 == palavra2:
         cria_palavra_dica()
-        cursor = banco.cursor()
 
-        cursor.execute("select palavrasecreta from criapalavre where id= (SELECT MAX(id) as maxId FROM criapalavre)")
-        n_letras = cursor.fetchall()
-        n_letras = (len(n_letras[0][0]))
+        for row in (criapalavra.select(criapalavra.palavrasecreta,fn.MAX(criapalavra.id))):
+            n_letras = (row.palavrasecreta)
+            n_letras = len(n_letras)
 
         # inserir numero de palavras no banco de dados.
         acertos = ([False] * n_letras)
         print(acertos)
-        cursor.execute("insert into chute(letrascitadas, tentativa) values(' ','0')")
+
+        try:
+            chutejogagor = chutejog.create(
+                jogador02=jogadorpartida,
+                letracitada=' ',
+                tentativa=0
+            )
+            chutejogagor.save()
+        except:
+            print("erro de execução ao inserir chute de referência primário no banco de dados")
+
         chuta.show()
         chuta.label_7.setText(forca.lineEdit_3.text().upper())
     else:
@@ -120,29 +215,26 @@ def chutaai():
     if ((chuta.lineEdit_4.text()) in alfabeto):
         if ((chuta.lineEdit_4.text()) not in lista_chute):
 
-            cursor = banco.cursor()
-            sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-            cursor.execute(sql)
-            tentativas = cursor.fetchall()
-            tentativas = (tentativas[0][0])
+            for row in (chutejog.select(chutejog.tentativa, fn.max(chutejog.id))):
+                tentativas = (row.tentativa)
+
+
 
             if tentativas < 5:
                 lista_chute02 = ' - '.join(lista_chute)
                 print('LETRAS CITADAS: {}'.format(lista_chute02).upper())
                 print('\n')
-                cursor.execute("select dica from criapalavre where id =(SELECT MAX(id) FROM criapalavre)")
-                dica = cursor.fetchall()
-                dica = (dica[0][0])
+                for row in (criapalavra.select(criapalavra.dica, fn.max(criapalavra.id))):
+                    dica = (row.dica)
+
                 print(dica)
                 print('DICA SECRETA: %s' %dica)
                 print('\n')
                 update_acertos(lista_chute, acertos, tentativas)
                 print("passou do update")
 
-            sql = "select tentativa from chute where id = (SELECT MAX(id) FROM chute)"
-            cursor.execute(sql)
-            tentativas = cursor.fetchall()
-            tentativas = (tentativas[0][0])
+            for row in (chutejog.select(chutejog.tentativa, fn.max(chutejog.id))):
+                tentativas = (row.tentativa)
 
             layout_palavra(tentativas)
 
@@ -159,10 +251,23 @@ def chutaai():
 
 def cria_palavra_dica():
     cursor = banco.cursor()
+
     palavra = forca.lineEdit.text()
     dica = forca.lineEdit_3.text()
+    global criadorpalavra
+    for row in (usuario.select().where(usuario.nome == forca.comboBox.currentText())):
+        criadorpalavra = (row.id)
+
     cursor.execute("insert into criapalavre(palavrasecreta, dica) values ('" + palavra + "','" + dica + "')")
 
+    try:
+        criapalavra.create(
+            jogador=criadorpalavra,
+            palavrasecreta=palavra,
+            dica=dica
+        )
+    except:
+        print("erro de execução")
 
 def enforcado():
     box = ['\u2572']
@@ -190,6 +295,8 @@ def avatar_vencedor():
     for boneco in zip(a, b, c):
         print(''.join(boneco))
 
+
+
 def contador():
     a = 0
     while a < 20:
@@ -197,13 +304,29 @@ def contador():
         print('=', end='')
         time.sleep(1)
 
+def jogarnovamente():
+    chuta.label_7.setText("")
+    chuta.label_10.setText("")
+    chuta.label_6.setText("")
+    forca.lineEdit.setText("")
+    forca.lineEdit_2.setText("")
+    forca.lineEdit_3.setText("")
+    chuta.close()
+    forca.close()
+    forca.show()
+    lista_chute.clear()
+
 
 
 app=QtWidgets.QApplication([])
 forca=uic.loadUi("forca.ui")
 chuta=uic.loadUi("chuteletra.ui")
+usuariologin=uic.loadUi("usuario.ui")
 forca.pushButton.clicked.connect(setup)
 chuta.pushButton_2.clicked.connect(chutaai)
+forca.pushButton_2.clicked.connect(login)
+usuariologin.pushButton_2.clicked.connect(criarlogin)
+chuta.pushButton.clicked.connect(jogarnovamente)
 
 global lista_chute
 lista_chute = []
@@ -211,5 +334,10 @@ lista_chute = []
 
 
 forca.show()
+
+for row in (usuario.select()):
+    forca.comboBox.addItem(row.nome)
+    forca.comboBox_2.addItem(row.nome)
+
 
 app.exec()
