@@ -1,11 +1,7 @@
-from PyQt5 import uic, QtWidgets
-import time
-import mysql.connector
-from PyQt5.QtWidgets import QMessageBox
+from PyQt6 import uic, QtWidgets
+from PyQt6.QtWidgets import QMessageBox
 from peewee import SqliteDatabase, Model, TextField, ForeignKeyField, DateTimeField, IntegerField,fn
-from PyQt5 import QtGui
-
-
+from PyQt6 import QtGui
 
 db = SqliteDatabase('bdforca.db')
 
@@ -31,18 +27,10 @@ class chutejog(basemodel):
 
 db.create_tables([usuario, criapalavra, chutejog] )
 
-
-banco = mysql.connector.connect(
-    host = "localhost",
-    user = "root",
-    passwd = "123456",
-    database = "bdforca"
-)
 alfabeto=['a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',' ','ç']
 
 def placarjogadores():
     placar.show()
-
     jogadoresativos = []
 
     for row in (usuario.select()):
@@ -122,8 +110,7 @@ def layout_palavra(tentativas): #puxar do banco de dados
     elif tentativas == 4:
         chuta.label_12.setPixmap(QtGui.QPixmap('forca4.png'))
     elif tentativas == 5:
-        chuta.label_12.setPixmap(QtGui.QPixmap('forca5.png'))
-        time.sleep(5)
+        QMessageBox.about(chuta, "Perdeu", "INFELIZMENTE, VOCÊ PERDEU!")
         chuta.label_12.setPixmap(QtGui.QPixmap('forca6.png'))
         chutejog.delete()
 
@@ -154,8 +141,6 @@ def update_acertos(lista_chute, acertos, tentativas):
 
     if chutex not in palavra_secreta:
         tentativas = tentativas + 1
-
-
     try:
         chutejogagor = chutejog.create(
             jogador02=jogadorpartida,
@@ -166,7 +151,6 @@ def update_acertos(lista_chute, acertos, tentativas):
     except:
         print("erro de execução ao inserir chute no banco de dados")
 
-
     if tentativas == 5:
         layout_palavra(tentativas)
         delete.execute()
@@ -174,8 +158,6 @@ def update_acertos(lista_chute, acertos, tentativas):
         pontonegativo = usuario.update(vitoria=usuario.vitoria + 1).where(usuario.id == criadorpalavra)
         pontopositivo.execute()
         pontonegativo.execute()
-
-
 
     if all(acertos):
         delete.execute()
@@ -190,12 +172,7 @@ def update_acertos(lista_chute, acertos, tentativas):
         except:
             print("erro de execução")
 
-
-
-
 def setup():
-
-
     global acertos
 
     palavra1 = forca.lineEdit.text()
@@ -231,18 +208,13 @@ def setup():
     else:
         QMessageBox.about(forca, "aviso", "REPETIÇÃO DA PALAVRA NÃO CONFERE!")
 
-
-
 def chutaai():
 
     if ((chuta.lineEdit_4.text()) in alfabeto):
         if ((chuta.lineEdit_4.text()) not in lista_chute):
 
-
             for row in (chutejog.select(chutejog.tentativa, fn.max(chutejog.id))):
                 tentativas = (row.tentativa)
-
-
 
             if tentativas < 5:
                 for row in (criapalavra.select(criapalavra.dica, fn.max(criapalavra.id))):
@@ -267,15 +239,12 @@ def chutaai():
 
 
 def cria_palavra_dica():
-    cursor = banco.cursor()
 
     palavra = forca.lineEdit.text()
     dica = forca.lineEdit_3.text()
     global criadorpalavra
     for row in (usuario.select().where(usuario.nome == forca.comboBox.currentText())):
         criadorpalavra = (row.id)
-
-    cursor.execute("insert into criapalavre(palavrasecreta, dica) values ('" + palavra + "','" + dica + "')")
 
     try:
         criapalavra.create(
@@ -285,16 +254,6 @@ def cria_palavra_dica():
         )
     except:
         print("erro de execução")
-
-
-
-
-def contador():
-    a = 0
-    while a < 60:
-        a += 1
-        chuta.label_13.setText(a)
-        time.sleep(1)
 
 def jogarnovamente():
     chuta.label_7.setText("")
@@ -310,7 +269,6 @@ def jogarnovamente():
 
 def excluirusuario():
     ids = []
-
 
     linha = usuariologin.tableWidget.currentRow()
     usuariologin.tableWidget.removeRow(linha)
@@ -347,9 +305,6 @@ placar.pushButton.clicked.connect(fecharplacardejogadores)
 
 global lista_chute
 lista_chute = []
-
-
-
 forca.show()
 forca.label_7.setPixmap(QtGui.QPixmap('corda.png'))
 forca.label_8.setPixmap(QtGui.QPixmap('corda2.png'))
