@@ -177,11 +177,12 @@ def setup():
 
     palavra1 = forca.lineEdit.text()
     palavra2 = forca.lineEdit_2.text()
+    dica = forca.lineEdit_3.text()
     global jogadorpartida
     for row in (usuario.select(usuario.id).where(usuario.nome == forca.comboBox_2.currentText())):
         jogadorpartida = (row.id)
 
-    if palavra1 == palavra2:
+    if palavra1 == palavra2 and palavra1 != "" and palavra2 != "" and dica != "":
         cria_palavra_dica()
 
         for row in (criapalavra.select(criapalavra.palavrasecreta,fn.MAX(criapalavra.id))):
@@ -205,6 +206,10 @@ def setup():
         chuta.label_7.setText(forca.lineEdit_3.text().upper())
         chuta.label_12.setPixmap(QtGui.QPixmap("forca0.png"))
 
+    elif  palavra1 == "" and palavra2 == "" and dica != "":
+        QMessageBox.about(forca, "aviso", "INSIRA A PALAVRA SECRETA!")
+    elif  dica == "":
+        QMessageBox.about(forca, "aviso", "INSIRA A DICA!")
     else:
         QMessageBox.about(forca, "aviso", "REPETIÇÃO DA PALAVRA NÃO CONFERE!")
 
